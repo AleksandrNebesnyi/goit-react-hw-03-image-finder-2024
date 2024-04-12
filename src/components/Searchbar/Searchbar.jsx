@@ -22,19 +22,21 @@ export class Searchbar extends Component {
     return (
       <header className={css.searchbar}>
         <form className={css.searchForm} onSubmit={this.handleSubmit}>
-          <button type="submit" className={css.SearchFormButton}>
-            <GoSearch size="24" color="red" />
-          </button>
-          <label className={css.SearchFormButtonLabel}>Search</label>
-          <input
-            onChange={this.handleChange}
-            className={css.SearchFormInput}
-            type="text"
-            autoComplete="off"
-            value={this.state.guery}
-            autoFocus
-            placeholder="Search images and photos"
-          />
+          <div className={css.flexContainer}>
+            <input
+              onChange={this.handleChange}
+              className={css.SearchFormInput}
+              type="text"
+              autoComplete="off"
+              value={this.state.guery}
+              autoFocus
+              placeholder="Search images and photos"
+            />
+            <button type="submit" className={css.SearchFormButton}>
+              <GoSearch className={css.icon} size="24" color="red" />
+            </button>
+            <label className={css.SearchFormButtonLabel}>Search</label>
+          </div>
         </form>
       </header>
     );
