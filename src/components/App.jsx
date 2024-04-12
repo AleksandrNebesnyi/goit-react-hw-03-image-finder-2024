@@ -1,105 +1,102 @@
 import { Component } from 'react';
-import { nanoid } from 'nanoid';
 import Notiflix from 'notiflix';
 import css from './App.module.css';
-import initialContacts from '../contacts';
-import { Filter } from './Filter/Filter';
-import { ContactsList } from './ContactsList/ContactsList';
-import { ContactForm } from './ContactForm/ContactForm';
+import { Searchbar } from './Searchbar/Searchbar';
+import { ImageGallery } from './ImageGallery/ImageGallery';
+import { Button } from './Button/Button';
+import { Loader } from './Loader/Loader';
+import { Modal } from './Modal/Modal';
+import { getImage } from '../components/api/api-servis';
 
 export class App extends Component {
   state = {
-    contacts: initialContacts,
-    filter: '',
+    images: [],
+    page: 1,
+    searchQuery: '',
+    isLoading: false,
+    error: null,
+    showModal: false,
+    largeImage: '',
   };
-
-  CONTACT_STORAGE_KEY = 'contacts';
-
-  componentDidMount() {
-    const contacts = JSON.parse(localStorage.getItem(this.CONTACT_STORAGE_KEY));
-    if (contacts) {
-      this.setState({ contacts });
-    }
-  }
 
   componentDidUpdate(prevProps, prevState) {
-    if (prevState.contacts !== this.state.contacts) {
-      localStorage.setItem(
-        this.CONTACT_STORAGE_KEY,
-        JSON.stringify(this.state.contacts)
-      );
+    if (
+      prevState.searchQuery !== this.state.searchQuery ||
+      prevState.page !== this.state.page
+    ) {
+      this.fetchImages();
+      this.scrollOnLoadButton();
     }
   }
 
-  addContact = ({ name, number }) => {
-    const normalizeName = name.toLowerCase();
-    if (normalizeName.trim() === '') {
-      return;
-    }
-    const ifNameAlreadyExist = this.state.contacts.some(
-      contact => contact.name.toLowerCase() === normalizeName
-    );
-
-    if (ifNameAlreadyExist) {
-      Notiflix.Notify.failure(`${name} is alredy in contact`);
-      return;
-    }
-
-    const newContact = {
-      id: nanoid(),
-      name,
-      number,
-    };
-    this.setState(({ contacts }) => {
-      return {
-        contacts: [newContact, ...contacts],
-      };
+  onChangeQuery = query => {
+    this.setState({
+      images: [],
+      page: 1,
+      searchQuery: query,
+      error: null,
+      isLoading: false,
     });
   };
-  deleteContact = id => {
+
+  fetchImages = () => {
+    const { page, searchQuery } = this.state;
+    this.setState({ isLoading: true });
+    getImage(searchQuery, page)
+      .then(data => {
+        this.setState(prevState => ({
+          images: [...prevState.images, ...data],
+        }));
+      })
+      .catch(error => {
+        this.setState({ error });
+        Notiflix.Notify.error('Something is wrong try again');
+      })
+
+      .finally(() => this.setState({ isLoading: false }));
+  };
+
+  handleClick = () => {
+    this.setState(prevState => ({ page: prevState.page + 1 }));
+  };
+
+  toggleModal = () => {
     this.setState(prevState => ({
-      contacts: prevState.contacts.filter(contact => contact.id !== id),
+      showModal: !prevState.showModal,
+      largeImage: '',
     }));
   };
-
-  getVisibleContacts = () => {
-    const { contacts, filter } = this.state;
-    const normalizeFilter = filter.toLowerCase();
-    return contacts.filter(contact =>
-      contact.name.toLowerCase().includes(normalizeFilter)
-    );
+  handleImageClick = largeImgUrl => {
+    this.setState({
+      showModal: true,
+      largeImage: largeImgUrl,
+    });
   };
-
-  handleChange = e => {
-    this.setState({ [e.currentTarget.name]: e.currentTarget.value });
+  //  Скролл при клике на кнопку
+  scrollOnLoadButton = () => {
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      behavior: 'smooth',
+    });
   };
 
   render() {
-    const { filter } = this.state;
-    const visibleContacts = this.getVisibleContacts();
+    const { images, isLoading, showModal, largeImage } = this.state;
+
+    const shouldRenderLoadMoreButton = images.length >= 12 && !isLoading;
+
     return (
       <div className={css.container}>
-        <h1>Phonebook</h1>
-
-        <ContactForm submit={this.addContact} />
-
-        <h2>Contacts</h2>
-
-        <Filter onFilterChange={this.handleChange} value={filter} />
-        <ContactsList
-          contacts={visibleContacts}
-          onDeleteContact={this.deleteContact}
-        />
+        <Searchbar submit={this.onChangeQuery} />
+        {isLoading && <Loader height="150" width="150" />}
+        {images && (
+          <ImageGallery items={images} onImageClick={this.handleImageClick} />
+        )}
+        {shouldRenderLoadMoreButton && <Button onBtnClick={this.handleClick} />}
+        {showModal && (
+          <Modal onClose={this.toggleModal} url={largeImage}></Modal>
+        )}
       </div>
     );
   }
 }
-
-// export const App = () => {
-//   return (
-//     <div className={css.container}>
-
-//       <input type="text" name="name" required />
-//     </div>
-//   );
-// };
